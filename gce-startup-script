@@ -1,0 +1,30 @@
+#!/bin/bash
+
+#this script will build a quick Apache and PHP server and will pull down from GitHub a simple mortgage calculator webapp.
+#The script is triggered by using GCE instance custom metadata fields "Key" "Value".  
+
+#Directions:
+# 1.  download this script and place on cloud storage that an instance will have access to (or authorized scope)
+# 2.  during instance creation, edit the custom metadata
+# 3.  First metadata field will be to call this startup script, The Key will be called "startup-script-url" without quotes and the 
+#     Value will be the URL of the cloud storage location I.E. "gs://cloud_startup_scripts/gce-startup-script.txt" without quotes
+# 4.  The second metadata fields can be anything that you would like to query in your instance during build, for instance I want to 
+#     query the name of the git repository and not hardcode this in my app, instead I will pass it in this way.  
+#     The key will by "gitProject" without quotes and the Value will be "roman7879/mortgage-cal" without quotes
+
+
+apt-get update
+apt-get install -y git php5 apache2
+cd /var/www/html
+rm index.html -f
+
+git init
+GIT_PROJECT=$(curl "http://metadata.google.internal/computeMetadata/v1/instance/attributes/gitProject" -H "Metadata-Flavor: Google")
+git pull https://github.com/$GIT_PROJECT
+
+
+META_REGION_STRING=$(curl "http://metadata.google.internal/computeMetadata/v1/instance/zone" -H "Metadata-Flavor: Google")
+
+REGION=`echo "$META_REGION_STRING" | awk -F/ '{print $4}'`
+
+sed -i "s|region-here|$REGION|" index.php
